@@ -141,10 +141,10 @@
             // View dari 'Right' screen side: Melihat (0,0,0)Merah, (0,0,1)Hijau, (1,0,0)Biru
             // Grid: Kolom kiri (x=0): Hijau atas Merah. Kolom kanan (x=1): Biru.
             optionsGrid: [
-                [[P.Hijau, null], [P.Merah, P.Biru]], // A (Benar)
-                [[P.Hijau, P.Ungu], [P.Merah, P.Biru]], 
-                [[null, P.Hijau], [P.Merah, P.Biru]], 
-                [[P.Merah, null], [P.Merah, P.Biru]]
+                [[Pa.Hijau, null], [Pa.Merah, P.Biru]], // A (Benar)
+                [[Pa.Hijau, P.Ungu], [Pa.Merah, P.Biru]], 
+                [[null, P.Hijau], [Pa.Merah, P.Biru]], 
+                [[Pa.Merah, null], [Pa.Merah, P.Biru]]
             ],
             correct: 0, explanation: "Panah 'Depan' menunjuk sisi kanan susunan. Terlihat kolom kiri tinggi (Merah+Hijau) dan kolom kanan pendek (Biru)."
         },
@@ -158,10 +158,10 @@
             ],
             // View Top: L terbalik. (0,0)Oren, (0,1)Pink, (0,2)Cyan, (1,0)Lime
             optionsGrid: [
-                [[P.Oren, P.Lime], [P.Pink, P.Lime]], 
-                [[P.Oren, P.Lime], [P.Pink, null], [P.Cyan, null]], // B (Benar)
-                [[P.Cyan, P.Lime], [P.Pink, null]], 
-                [[P.Oren, null], [P.Pink, null]] 
+                [[Pa.Oren, P.Lime], [Pa.Pink, P.Lime]], 
+                [[Pa.Oren, P.Lime], [Pa.Pink, null], [Pa.Cyan, null]], // B (Benar)
+                [[Pa.Cyan, P.Lime], [Pa.Pink, null]], 
+                [[Pa.Oren, null], [Pa.Pink, null]] 
             ],
             correct: 1, explanation: "Dari atas terlihat bentuk 'L' panjang ke belakang."
         },
@@ -177,10 +177,10 @@
             // Urutan dari kiri ke kanan visual: (0,0), (1,0), (2,0).
             // Kiri: Biru. Tengah: Merah(bwh)+Hijau(atas). Kanan: Kuning.
             optionsGrid: [
-                [[null,P.Hijau,null],[P.Biru,P.Merah,P.Kuning]], // A (Benar)
-                [[P.Hijau,P.Hijau,P.Hijau]], 
-                [[P.Biru,null,P.Kuning],[P.Biru,P.Merah,P.Kuning]], 
-                [[P.Hijau,P.Merah],[P.Biru,P.Kuning]]
+                [[null,P.Hijau,null],[Pa.Biru,P.Merah,P.Kuning]], // A (Benar)
+                [[Pa.Hijau,P.Hijau,P.Hijau]], 
+                [[Pa.Biru,null,P.Kuning],[Pa.Biru,P.Merah,P.Kuning]], 
+                [[Pa.Hijau,P.Merah],[Pa.Biru,P.Kuning]]
             ],
             correct: 0, explanation: "Dari arah panah, terlihat seperti podium juara: Tengah tinggi (Hijau), Kiri (Biru), Kanan (Kuning)."
         },
@@ -196,10 +196,10 @@
             // Tangga turun dari kiri visual ke kanan visual.
             // Col 0 (y=0): Tinggi 3. Col 1 (y=1): Tinggi 2. Col 2 (y=2): Tinggi 1.
             optionsGrid: [
-                [[P.Hijau,null,null],[P.Merah,P.Kuning,null],[P.Ungu,P.Oren,P.Biru]], // A (Benar)
-                [[P.Hijau,P.Kuning,P.Biru]], 
-                [[P.Ungu],[P.Oren],[P.Biru]], 
-                [[P.Hijau,null],[P.Ungu,P.Biru]]
+                [[Pa.Hijau,null,null],[Pa.Merah,P.Kuning,null],[Pa.Ungu,P.Oren,P.Biru]], // A (Benar)
+                [[Pa.Hijau,P.Kuning,P.Biru]], 
+                [[Pa.Ungu],[Pa.Oren],[Pa.Biru]], 
+                [[Pa.Hijau,null],[Pa.Ungu,P.Biru]]
             ],
             correct: 0, explanation: "Terlihat tangga menurun. Paling kiri (Ungu/Merah/Hijau) tinggi 3 tumpuk."
         },
@@ -212,10 +212,10 @@
                 {x:0,y:1,z:0,c:Pa.Merah}, {x:2,y:1,z:0,c:Pa.Kuning}
             ],
             optionsGrid: [
-                [[null,P.Coklat,null],[P.Merah,P.Abu,P.Kuning],[null,P.Navy,null]], // A (Benar)
-                [[P.Coklat,P.Abu,P.Navy]], 
-                [[P.Merah,null,P.Kuning],[null,P.Abu,null]], 
-                [[P.Coklat,P.Abu,P.Navy],[P.Merah,P.Abu,P.Kuning]]
+                [[null,P.Coklat,null],[Pa.Merah,P.Abu,P.Kuning],[null,P.Navy,null]], // A (Benar)
+                [[Pa.Coklat,P.Abu,P.Navy]], 
+                [[Pa.Merah,null,P.Kuning],[null,P.Abu,null]], 
+                [[Pa.Coklat,P.Abu,P.Navy],[Pa.Merah,P.Abu,P.Kuning]]
             ],
             correct: 0, explanation: "Bentuk tanda tambah (+). Coklat di belakang, Navy di depan, Merah kiri, Kuning kanan."
         },
@@ -228,10 +228,10 @@
                 {x:0,y:0,z:1,c:Pa.Cyan}, {x:0,y:2,z:1,c:Pa.Biru} 
             ],
             optionsGrid: [
-                [[P.Cyan,null,P.Biru],[P.Pink,P.Lime,P.Oren]], // A (Benar)
-                [[P.Cyan,P.Lime,P.Biru],[P.Pink,P.Lime,P.Oren]], 
-                [[null,P.Lime,null],[P.Pink,P.Lime,P.Oren]], 
-                [[P.Pink,P.Lime,P.Oren]]
+                [[Pa.Cyan,null,P.Biru],[Pa.Pink,P.Lime,P.Oren]], // A (Benar)
+                [[Pa.Cyan,P.Lime,P.Biru],[Pa.Pink,P.Lime,P.Oren]], 
+                [[null,P.Lime,null],[Pa.Pink,P.Lime,P.Oren]], 
+                [[Pa.Pink,P.Lime,P.Oren]]
             ],
             correct: 0, explanation: "Bentuk huruf U. Bagian tengah (Lime) lebih rendah dari kiri dan kanan."
         },
@@ -244,10 +244,10 @@
                 {x:0,y:1,z:0,c:Pa.Hijau}, {x:1,y:1,z:0,c:Pa.Biru}
             ],
             optionsGrid: [
-                [[P.Merah,P.Kuning],[P.Hijau,P.Biru]], // A (Benar)
-                [[P.Merah,null],[null,P.Biru]], 
-                [[P.Merah,P.Kuning]], 
-                [[P.Hijau]]
+                [[Pa.Merah,P.Kuning],[Pa.Hijau,P.Biru]], // A (Benar)
+                [[Pa.Merah,null],[null,P.Biru]], 
+                [[Pa.Merah,P.Kuning]], 
+                [[Pa.Hijau]]
             ],
             correct: 0, explanation: "Terlihat persegi penuh 2x2 dengan 4 warna berbeda."
         },
