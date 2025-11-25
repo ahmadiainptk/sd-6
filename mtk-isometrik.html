@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kuis Visualisasi Spasial Lengkap</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800&display=swap');
+        
+        body { font-family: 'Nunito', sans-serif; background-color: #f8fafc; }
+
+        /* Styling SVG */
+        svg { display: block; margin: 0 auto; overflow: visible; max-width: 100%; height: auto; }
+        
+        .face-top { fill-opacity: 1; }
+        .face-left { filter: brightness(0.9); }
+        .face-right { filter: brightness(0.75); }
+
+        /* Grid untuk Opsi Jawaban 2D */
+        .grid-option {
+            display: grid;
+            gap: 2px;
+            background-color: transparent;
+            width: fit-content;
+            margin: 0 auto;
+        }
+        .grid-cell {
+            width: 24px;
+            height: 24px;
+            border: 1px solid rgba(0,0,0,0.1);
+            background-color: white;
+            border-radius: 2px;
+        }
+        
+        /* Kartu Pilihan Ganda */
+        .option-card {
+            transition: all 0.2s;
+            border: 2px solid #e2e8f0;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            border-radius: 1rem;
+            cursor: pointer;
+            background-color: white;
+        }
+        .option-card:hover { border-color: #3b82f6; background-color: #eff6ff; }
+        
+        .option-input:checked + .option-card {
+            background-color: #eff6ff;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 2px #2563eb;
+        }
+        
+        /* Animasi Panah */
+        @keyframes bounce-x {
+            0%, 100% { transform: translateX(0); }
+            50% { transform: translateX(5px); }
+        }
+        @keyframes bounce-y {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(5px); }
+        }
+        .arrow-anim-right { animation: bounce-x 1s infinite; }
+        .arrow-anim-down { animation: bounce-y 1s infinite; }
+    </style>
+</head>
+<body class="pb-32 text-slate-800">
+
+    <!-- Header -->
+    <header class="bg-blue-600 text-white p-6 shadow-lg sticky top-0 z-40 border-b-4 border-blue-800">
+        <div class="max-w-4xl mx-auto flex justify-between items-center">
+            <div>
+                <h1 class="text-2xl font-extrabold tracking-tight">Kuis Visualisasi Spasial</h1>
+                <p class="text-blue-100 text-xs md:text-sm">Perhatikan panah penunjuk arah pandang!</p>
+            </div>
+            <div class="bg-blue-800/50 backdrop-blur-sm px-4 py-2 rounded-xl text-sm font-bold border border-blue-400">
+                Soal <span id="progress-text">0</span> / 15
+            </div>
+        </div>
+    </header>
+
+    <!-- Container Soal -->
+    <div id="quiz-container" class="max-w-3xl mx-auto space-y-8 px-4 mt-8"></div>
+
+    <!-- Sticky Footer Button -->
+    <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-4 shadow-[0_-4px_20px_rgba(0,0,0,0.1)] z-50">
+        <div class="max-w-3xl mx-auto flex justify-end">
+            <button onclick="checkAnswers()" class="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-8 rounded-full shadow-lg transform transition active:scale-95 flex items-center gap-2 text-lg">
+                <span>Cek Nilai</span>
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal Hasil -->
+    <div id="result-modal" class="fixed inset-0 bg-slate-900/70 hidden flex items-center justify-center z-[60] p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-3xl p-8 max-w-md w-full text-center shadow-2xl transform scale-100 transition-all">
+            <div class="text-7xl mb-4">🏆</div>
+            <h2 class="text-3xl font-bold text-slate-800 mb-2">Hasil Kamu</h2>
+            <div class="text-6xl font-black text-blue-600 mb-6" id="score-value">0</div>
+            <p id="score-message" class="text-slate-600 mb-8 bg-slate-50 p-4 rounded-2xl text-sm font-medium border border-slate-100"></p>
+            <button onclick="closeModal()" class="w-full bg-slate-800 hover:bg-slate-900 text-white py-4 rounded-2xl font-bold transition-colors">
+                Lihat Pembahasan Detail
+            </button>
+        </div>
+    </div>
+
+<script>
+    const TILE = 34; // Ukuran kubus
+    // Palet Warna Cerah & Kontras
+    const Pa = {
+        Merah: '#ef4444', Kuning: '#fbbf24', Hijau: '#22c55e', 
+        Biru: '#3b82f6', Ungu: '#a855f7', Oren: '#f97316', 
+        Pink: '#ec4899', Cyan: '#06b6d4', Abu: '#94a3b8',
+        Coklat: '#854d0e', Navy: '#1e3a8a', Lime: '#84cc16'
+    };
+
+    /* KONFIGURASI ARAH PANAH (arrowDir):
+       - 'right': Panah dari kanan menunjuk ke kiri (Menunjuk sisi 'Face Right') -> Biasanya visual untuk "Kanan" atau "Depan" (sisi kanan layar).
+       - 'left': Panah dari kiri menunjuk ke kanan (Menunjuk sisi 'Face Left') -> Biasanya visual untuk "Depan" (sisi kiri layar).
+       - 'top': Panah dari atas menunjuk ke bawah.
+    */
+
+    const qData = [
+        // SOAL 1: Depan (Melihat sisi kanan layar / X-faces)
+        {
+            id: 1, type: 'projection', 
+            arrowDir: 'right', arrowLabel: 'DEPAN',
+            text: "Perhatikan arah panah! Jika dilihat dari <b>DEPAN</b>, susunan kubus akan tampak seperti...",
+            cubes: [
+                {x:0,y:0,z:0,c:Pa.Merah}, {x:0,y:1,z:0,c:Pa.Kuning}, 
+                {x:0,y:0,z:1,c:Pa.Hijau}, // Kiri di gambar (Screen Left)
+                {x:1,y:0,z:0,c:Pa.Biru}, {x:1,y:1,z:0,c:Pa.Ungu}  // Kanan di gambar (Screen Right)
+            ],
+            // View dari 'Right' screen side: Melihat (0,0,0)Merah, (0,0,1)Hijau, (1,0,0)Biru
+            // Grid: Kolom kiri (x=0): Hijau atas Merah. Kolom kanan (x=1): Biru.
+            optionsGrid: [
+                [[P.Hijau, null], [P.Merah, P.Biru]], // A (Benar)
+                [[P.Hijau, P.Ungu], [P.Merah, P.Biru]], 
+                [[null, P.Hijau], [P.Merah, P.Biru]], 
+                [[P.Merah, null], [P.Merah, P.Biru]]
+            ],
+            correct: 0, explanation: "Panah 'Depan' menunjuk sisi kanan susunan. Terlihat kolom kiri tinggi (Merah+Hijau) dan kolom kanan pendek (Biru)."
+        },
+        // SOAL 2: Atas
+        {
+            id: 2, type: 'projection', arrowDir: 'top', arrowLabel: 'ATAS',
+            text: "Susunan kubus di atas jika dilihat dari <b>ATAS</b>, maka akan tampak seperti...",
+            cubes: [
+                {x:0,y:0,z:0,c:Pa.Oren}, {x:0,y:1,z:0,c:Pa.Pink}, {x:0,y:2,z:0,c:Pa.Cyan}, 
+                {x:1,y:0,z:0,c:Pa.Lime}
+            ],
+            // View Top: L terbalik. (0,0)Oren, (0,1)Pink, (0,2)Cyan, (1,0)Lime
+            optionsGrid: [
+                [[P.Oren, P.Lime], [P.Pink, P.Lime]], 
+                [[P.Oren, P.Lime], [P.Pink, null], [P.Cyan, null]], // B (Benar)
+                [[P.Cyan, P.Lime], [P.Pink, null]], 
+                [[P.Oren, null], [P.Pink, null]] 
+            ],
+            correct: 1, explanation: "Dari atas terlihat bentuk 'L' panjang ke belakang."
+        },
+        // SOAL 3: Depan (Melihat sisi kiri layar / Y-faces)
+        {
+            id: 3, type: 'projection', arrowDir: 'left', arrowLabel: 'DEPAN',
+            text: "Perhatikan panah! Jika dilihat dari <b>DEPAN</b>, susunan kubus akan tampak seperti...",
+            cubes: [
+                {x:0,y:0,z:0,c:Pa.Biru}, {x:1,y:0,z:0,c:Pa.Merah}, {x:2,y:0,z:0,c:Pa.Kuning},
+                {x:1,y:0,z:1,c:Pa.Hijau}
+            ],
+            // View dari 'Left' screen side (Y-faces). All y=0.
+            // Urutan dari kiri ke kanan visual: (0,0), (1,0), (2,0).
+            // Kiri: Biru. Tengah: Merah(bwh)+Hijau(atas). Kanan: Kuning.
+            optionsGrid: [
+                [[null,P.Hijau,null],[P.Biru,P.Merah,P.Kuning]], // A (Benar)
+                [[P.Hijau,P.Hijau,P.Hijau]], 
+                [[P.Biru,null,P.Kuning],[P.Biru,P.Merah,P.Kuning]], 
+                [[P.Hijau,P.Merah],[P.Biru,P.Kuning]]
+            ],
+            correct: 0, explanation: "Dari arah panah, terlihat seperti podium juara: Tengah tinggi (Hijau), Kiri (Biru), Kanan (Kuning)."
+        },
+        // SOAL 4: Kanan (Melihat sisi kanan layar / X-faces)
+        {
+            id: 4, type: 'projection', arrowDir: 'right', arrowLabel: 'KANAN',
+            text: "Susunan kubus di atas jika dilihat dari <b>KANAN</b>, maka akan tampak seperti...",
+            cubes: [
+                {x:0,y:0,z:0,c:Pa.Ungu}, {x:0,y:1,z:0,c:Pa.Oren}, {x:0,y:2,z:0,c:Pa.Biru},
+                {x:0,y:0,z:1,c:Pa.Merah}, {x:0,y:1,z:1,c:Pa.Kuning},
+                {x:0,y:0,z:2,c:Pa.Hijau}
+            ],
+            // Tangga turun dari kiri visual ke kanan visual.
+            // Col 0 (y=0): Tinggi 3. Col 1 (y=1): Tinggi 2. Col 2 (y=2): Tinggi 1.
+            optionsGrid: [
+                [[P.Hijau,null,null],[P.Merah,P.Kuning,null],[P.Ungu,P.Oren,P.Biru]], // A (Benar)
+                [[P.Hijau,P.Kuning,P.Biru]], 
+                [[P.Ungu],[P.Oren],[P.Biru]], 
+                [[P.Hijau,null],[P.Ungu,P.Biru]]
+            ],
+            correct: 0, explanation: "Terlihat tangga menurun. Paling kiri (Ungu/Merah/Hijau) tinggi 3 tumpuk."
+        },
+        // SOAL 5: Atas
+        {
+            id: 5, type: 'projection', arrowDir: 'top', arrowLabel: 'ATAS',
+            text: "Susunan kubus di atas jika dilihat dari <b>ATAS</b>, maka akan tampak seperti...",
+            cubes: [
+                {x:1,y:0,z:0,c:Pa.Coklat}, {x:1,y:1,z:0,c:Pa.Abu}, {x:1,y:2,z:0,c:Pa.Navy},
+                {x:0,y:1,z:0,c:Pa.Merah}, {x:2,y:1,z:0,c:Pa.Kuning}
+            ],
+            optionsGrid: [
+                [[null,P.Coklat,null],[P.Merah,P.Abu,P.Kuning],[null,P.Navy,null]], // A (Benar)
+                [[P.Coklat,P.Abu,P.Navy]], 
+                [[P.Merah,null,P.Kuning],[null,P.Abu,null]], 
+                [[P.Coklat,P.Abu,P.Navy],[P.Merah,P.Abu,P.Kuning]]
+            ],
+            correct: 0, explanation: "Bentuk tanda tambah (+). Coklat di belakang, Navy di depan, Merah kiri, Kuning kanan."
+        },
+        // SOAL 6: Kanan (U Shape)
+        {
+            id: 6, type: 'projection', arrowDir: 'right', arrowLabel: 'KANAN',
+            text: "Apabila susunan kubus di atas dilihat dari <b>KANAN</b>, maka akan terlihat seperti...",
+            cubes: [
+                {x:0,y:0,z:0,c:Pa.Pink}, {x:0,y:1,z:0,c:Pa.Lime}, {x:0,y:2,z:0,c:Pa.Oren},
+                {x:0,y:0,z:1,c:Pa.Cyan}, {x:0,y:2,z:1,c:Pa.Biru} 
+            ],
+            optionsGrid: [
+                [[P.Cyan,null,P.Biru],[P.Pink,P.Lime,P.Oren]], // A (Benar)
+                [[P.Cyan,P.Lime,P.Biru],[P.Pink,P.Lime,P.Oren]], 
+                [[null,P.Lime,null],[P.Pink,P.Lime,P.Oren]], 
+                [[P.Pink,P.Lime,P.Oren]]
+            ],
+            correct: 0, explanation: "Bentuk huruf U. Bagian tengah (Lime) lebih rendah dari kiri dan kanan."
+        },
+        // SOAL 7: Atas
+        {
+            id: 7, type: 'projection', arrowDir: 'top', arrowLabel: 'ATAS',
+            text: "Apabila susunan kubus di atas dilihat dari <b>ATAS</b>, maka akan terlihat seperti...",
+            cubes: [
+                {x:0,y:0,z:0,c:Pa.Merah}, {x:1,y:0,z:0,c:Pa.Kuning},
+                {x:0,y:1,z:0,c:Pa.Hijau}, {x:1,y:1,z:0,c:Pa.Biru}
+            ],
+            optionsGrid: [
+                [[P.Merah,P.Kuning],[P.Hijau,P.Biru]], // A (Benar)
+                [[P.Merah,null],[null,P.Biru]], 
+                [[P.Merah,P.Kuning]], 
+                [[P.Hijau]]
+            ],
+            correct: 0, explanation: "Terlihat persegi penuh 2x2 dengan 4 warna berbeda."
+        },
+        // SOAL 8: Hitung Warna (Kanan)
+        {
+            id: 8, type: 'counting', arrowDir: 'right', arrowLabel: 'KANAN',
+            text: "Apabila dilihat dari arah <b>KANAN</b> (panah), berapa banyak persegi berwarna yang terlihat?",
+            cubes: [
+                {x:0,y:0,z:0,c:Pa.Merah}, {x:0,y:1,z:0,c:Pa.Kuning}, {x:0,y:2,z:0,c:Pa.Hijau},
+                {x:0,y:1,z:1,c:Pa.Biru}
+            ],
+            options: ["3", "4", "5", "6"],
+            correct: 1, 
+            explanation: "Semua 4 kubus memiliki sisi yang menghadap ke kanan tanpa terhalang. Jadi terlihat 4 warna."
+        },
+        // SOAL 9: Hitung Warna (Atas)
+        {
+            id: 9, type: 'counting', arrowDir: 'top', arrowLabel: 'ATAS',
+            text: "Apabila dilihat dari <b>ATAS</b>, berapa banyak persegi berwarna yang terlihat?",
+            cubes: [
+                {x:0,y:0,z:0,c:Pa.Oren}, {x:1,y:0,z:0,c:Pa.Ungu},
+                {x:0,y:1,z:0,c:Pa.Pink}, {x:1,y:1,z:0,c:Pa.Cyan},
+                {x:0,y:0,z:1,c:Pa.Lime} // Numpuk di pojok (0,0)
+            ],
+            options: ["3", "4", "5", "6"],
+            correct: 1, // Lime menutupi Oren.
+            explanation: "Total 5 kubus, tapi kubus Lime menutupi kubus Oren yang ada di bawahnya. Jadi yang terlihat hanya 4 persegi."
+        },
+        // SOAL 10: Hitung Warna (Atas)
+        {
+            id: 10, type: 'counting', arrowDir: 'top', arrowLabel: 'ATAS',
+            text: "Apabila dilihat dari <b>ATAS</b>, berapa banyak persegi berwarna yang terlihat?",
+            cubes: [
+                {x:0,y:0,z:0,c:Pa.Biru}, {x:1,y:0,z:0,c:Pa.Merah}, {x:2,y:0,z:0,c:Pa.Kuning},
+                {x:0,y:1,z:0,c:Pa.Hijau}, {x:1,y:1,z:0,c:Pa.Ungu},
+                {x:0,y:2,z:0,c:Pa.Oren}
+            ],
+            options: ["5", "6", "7", "8"],
+            correct: 1, 
+            explanation: "Semua 6 kubus tersebar di lantai dasar dan tidak ada yang saling menutupi dari atas."
+        },
+        // SOAL 11: Hitung Warna (Kanan)
+        {
+            id: 11, type: 'counting', arrowDir: 'right', arrowLabel: 'KANAN',
+            text: "Apabila dilihat dari <b>KANAN</b>, berapa banyak persegi berwarna yang terlihat?",
+            cubes: [
+                {x:0,y:0,z:0,c:Pa.Merah}, 
+                {x:0,y:0,z:1,c:Pa.Biru},
+                {x:0,y:0,z:2,c:Pa.Kuning}
+            ],
+            options: ["1", "2", "3", "4"],
+            correct: 2, 
+            explanation: "Tumpukan vertikal 3 tingkat. Dari samping terlihat 3 persegi."
+        },
+        // SOAL 12: Hitung Warna (Depan/Kiri Visual)
+        {
+            id: 12, type: 'counting', arrowDir: 'left', arrowLabel: 'DEPAN',
+            text: "Apabila dilihat dari <b>DEPAN</b>, berapa banyak persegi berwarna yang terlihat?",
+            cubes: [
+                {x:0,y:0,z:0,c:Pa.Navy}, {x:1,y:0,z:0,c:Pa.Abu},
+                {x:0,y:0,z:1,c:Pa.Lime}, {x:1,y:0,z:1,c:Pa.Coklat}
+            ],
+            options: ["3", "4", "5", "6"],
+            correct: 1, 
+            explanation: "Dinding 2x2. Semua 4 persegi menghadap ke depan dan terlihat jelas."
+        },
+        // SOAL 13: Hitung Warna (Kanan)
+        {
+            id: 13, type: 'counting', arrowDir: 'right', arrowLabel: 'KANAN',
+            text: "Apabila dilihat dari <b>KANAN</b>, berapa banyak persegi berwarna yang terlihat?",
+            cubes: [
+                {x:0,y:0,z:0,c:Pa.Pink}, {x:0,y:1,z:0,c:Pa.Ungu}, {x:0,y:2,z:0,c:Pa.Cyan},
+                {x:0,y:0,z:1,c:Pa.Merah}, {x:0,y:1,z:1,c:Pa.Biru}, {x:0,y:2,z:1,c:Pa.Hijau}
+            ],
+            options: ["4", "5", "6", "7"],
+            correct: 2, 
+            explanation: "Dinding panjang 3x2. Dari sisi kanan, keenam persegi tersebut terlihat semua."
+        },
+        // SOAL 14: Dadu
+        {
+            id: 14, type: 'logic', view: 'Logika',
+            text: "Sisi BAWAH dadu bernilai 5. Berapa nilai sisi ATAS (yang kosong)?",
+            cubes: [{x:0,y:0,z:0,c:'#fff', labelFront:'3', labelRight:'6', labelBottom:'5'}], 
+            options: ["2", "4", "5", "6"],
+            correct: 0, 
+            explanation: "Aturan dadu: Sisi berlawanan berjumlah 7. <br>Atas + Bawah = 7.<br>Atas + 5 = 7 → Atas = 2."
+        },
+        // SOAL 15: Dadu
+        {
+            id: 15, type: 'logic', view: 'Logika',
+            text: "Jika sisi KANAN bernilai 4, berapa nilai sisi KIRI?",
+            cubes: [{x:0,y:0,z:0,c:'#fff', labelTop:'1', labelFront:'2', labelRight:'4'}],
+            options: ["2", "3", "5", "6"],
+            correct: 1, 
+            explanation: "Kiri + Kanan = 7.<br>Kiri + 4 = 7 → Kiri = 3."
+        }
+    ];
+
+    // --- ENGINE SVG 3D ---
+    function generateSVG(q) {
+        if (!q.cubes) return ''; 
+        const sorted = [...q.cubes].sort((a, b) => (a.x + a.y + a.z) - (b.x + b.y + b.z));
+        
+        let content = '';
+        // Center Isometric
+        const startIsoX = 180; 
+        const startIsoY = 180;
+
+        let paths = '';
+        let labels = '';
+        
+        // Bounding Box
+        let minX=999, maxX=-999, minY=999, maxY=-999;
+
+        sorted.forEach(c => {
+            const isoX = startIsoX + (c.x - c.y) * TILE;
+            const isoY = startIsoY + (c.x + c.y) * (TILE * 0.5) - (c.z * TILE);
+
+            if(isoX < minX) minX = isoX; if(isoX+TILE > maxX) maxX = isoX+TILE;
+            if(isoY-TILE < minY) minY = isoY-TILE; if(isoY+TILE > maxY) maxY = isoY+TILE;
+
+            const color = c.c;
+            // Top
+            paths += `<path d="M${isoX},${isoY} l${TILE},-${TILE*0.5} l${TILE},${TILE*0.5} l-${TILE},${TILE*0.5} z" fill="${color}" class="face-top" stroke="rgba(0,0,0,0.1)" stroke-width="1"/>`;
+            // Left
+            paths += `<path d="M${isoX},${isoY} l${TILE},${TILE*0.5} v${TILE} l-${TILE},-${TILE*0.5} z" fill="${color}" class="face-left" stroke="rgba(0,0,0,0.1)" stroke-width="1"/>`;
+            // Right
+            paths += `<path d="M${isoX+TILE},${isoY+TILE*0.5} l${TILE},-${TILE*0.5} v${TILE} l-${TILE},${TILE*0.5} z" fill="${color}" class="face-right" stroke="rgba(0,0,0,0.1)" stroke-width="1"/>`;
+
+            // Labels (Dadu)
+            if(c.labelTop) labels += `<text x="${isoX+TILE}" y="${isoY+5}" font-size="14" text-anchor="middle" fill="#333" font-weight="800">${c.labelTop}</text>`;
+            if(c.labelFront) labels += `<text x="${isoX+TILE/2}" y="${isoY+TILE}" font-size="14" text-anchor="middle" fill="#333" font-weight="800">${c.labelFront}</text>`;
+            if(c.labelRight) labels += `<text x="${isoX+TILE*1.5}" y="${isoY+TILE}" font-size="14" text-anchor="middle" fill="#333" font-weight="800">${c.labelRight}</text>`;
+            if(c.labelBottom) labels += `<text x="${isoX+TILE}" y="${isoY+TILE*2}" font-size="12" text-anchor="middle" fill="#666" font-style="italic">(Bwh:${c.labelBottom})</text>`;
+        });
+
+        // --- MENGGAMBAR PANAH MERAH (Visual Cue) ---
+        let arrowSVG = '';
+        if(q.arrowDir === 'right') {
+            // Panah dari kanan bawah menunjuk ke sisi kanan kubus
+            const ax = maxX + 40; const ay = maxY - 20;
+            arrowSVG = `
+                <g class="arrow-anim-right">
+                    <line x1="${ax}" y1="${ay}" x2="${ax-30}" y2="${ay}" stroke="#ef4444" stroke-width="4" marker-end="url(#arrowhead)" />
+                    <text x="${ax+5}" y="${ay+5}" font-weight="bold" fill="#ef4444" font-size="12">${q.arrowLabel}</text>
+                </g>`;
+        } else if(q.arrowDir === 'left') {
+            // Panah dari kiri bawah menunjuk ke sisi kiri kubus
+            const ax = minX - 40; const ay = maxY - 20;
+            arrowSVG = `
+                <g class="arrow-anim-right" style="transform: scaleX(-1); transform-origin: ${ax}px ${ay}px;">
+                    <line x1="${ax}" y1="${ay}" x2="${ax+30}" y2="${ay}" stroke="#ef4444" stroke-width="4" marker-end="url(#arrowhead)" />
+                </g>
+                <text x="${ax-45}" y="${ay+5}" font-weight="bold" fill="#ef4444" font-size="12">${q.arrowLabel}</text>`;
+        } else if(q.arrowDir === 'top') {
+            // Panah dari atas
+            const ax = (minX + maxX) / 2; const ay = minY - 30;
+            arrowSVG = `
+                <g class="arrow-anim-down">
+                    <line x1="${ax}" y1="${ay}" x2="${ax}" y2="${ay+25}" stroke="#ef4444" stroke-width="4" marker-end="url(#arrowhead)" />
+                    <text x="${ax}" y="${ay-5}" text-anchor="middle" font-weight="bold" fill="#ef4444" font-size="12">${q.arrowLabel}</text>
+                </g>`;
+        }
+
+        const w = (maxX - minX) + 120;
+        const h = (maxY - minY) + 100;
+        const vbX = minX - 60;
+        const vbY = minY - 50;
+
+        return `
+        <svg viewBox="${vbX} ${vbY} ${w} ${h}" width="100%" height="240">
+            <defs>
+                <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                    <polygon points="0 0, 10 3.5, 0 7" fill="#ef4444" />
+                </marker>
+            </defs>
+            ${paths}
+            ${labels}
+            ${arrowSVG}
+        </svg>`;
+    }
+
+    // --- RENDER ---
+    const container = document.getElementById('quiz-container');
+
+    qData.forEach((q, idx) => {
+        const svgHTML = generateSVG(q);
+        let optionsHTML = '';
+
+        if (q.type === 'projection') {
+            q.optionsGrid.forEach((grid, optIdx) => {
+                const letter = String.fromCharCode(65 + optIdx);
+                // Grid generator with COLORS
+                let gridHTML = `<div class="grid-option" style="grid-template-columns: repeat(${grid[0].length}, 1fr);">`;
+                grid.forEach(row => row.forEach(cellColor => {
+                    const style = cellColor ? `background-color: ${cellColor};` : '';
+                    gridHTML += `<div class="grid-cell" style="${style}"></div>`;
+                }));
+                gridHTML += `</div>`;
+                
+                optionsHTML += `
+                    <div class="relative h-full">
+                        <input type="radio" name="q${q.id}" id="q${q.id}_${optIdx}" value="${optIdx}" class="option-input hidden peer">
+                        <label for="q${q.id}_${optIdx}" class="option-card group">
+                            <span class="font-bold text-slate-400 mb-3 group-hover:text-blue-500">${letter}</span>
+                            ${gridHTML}
+                        </label>
+                    </div>
+                `;
+            });
+        } else {
+            q.options.forEach((opt, optIdx) => {
+                const letter = String.fromCharCode(65 + optIdx);
+                optionsHTML += `
+                    <div class="relative">
+                        <input type="radio" name="q${q.id}" id="q${q.id}_${optIdx}" value="${optIdx}" class="option-input hidden peer">
+                        <label for="q${q.id}_${optIdx}" class="option-card flex-row justify-start gap-4 p-4">
+                            <div class="w-10 h-10 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center font-bold shadow-sm group-hover:bg-blue-100 group-hover:text-blue-600">${letter}</div>
+                            <span class="font-bold text-lg text-slate-700">${opt}</span>
+                        </label>
+                    </div>
+                `;
+            });
+        }
+
+        container.innerHTML += `
+            <div class="bg-white rounded-2xl shadow-md border border-slate-100 overflow-hidden question-card transform transition hover:shadow-xl" id="card-${q.id}">
+                <div class="bg-slate-50 px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+                    <span class="font-extrabold text-slate-500 text-sm uppercase tracking-wider">Soal No. ${q.id}</span>
+                    <span id="feedback-${q.id}" class="hidden text-xs font-bold px-3 py-1 rounded-full animate-pulse"></span>
+                </div>
+                <div class="p-6 md:p-8">
+                    <p class="text-slate-800 mb-8 text-lg font-medium leading-relaxed">${q.text}</p>
+                    <div class="mb-8 flex justify-center bg-slate-50 rounded-3xl p-6 border border-slate-100 shadow-inner">${svgHTML}</div>
+                    <div class="grid ${q.type==='projection'?'grid-cols-2 md:grid-cols-4':'grid-cols-1 md:grid-cols-2'} gap-4 mb-6">
+                        ${optionsHTML}
+                    </div>
+                    <div id="explanation-${q.id}" class="hidden mt-6 p-5 bg-yellow-50 border-l-4 border-yellow-400 rounded-r-xl text-slate-700 text-sm shadow-sm">
+                        <strong class="text-yellow-700 block mb-2 uppercase text-xs tracking-bold">Pembahasan:</strong> 
+                        <p>${q.explanation}</p>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+
+    function checkAnswers() {
+        let score = 0;
+        let answered = 0;
+        qData.forEach(q => {
+            const selected = document.querySelector(`input[name="q${q.id}"]:checked`);
+            const feedbackEl = document.getElementById(`feedback-${q.id}`);
+            const card = document.getElementById(`card-${q.id}`);
+            const exp = document.getElementById(`explanation-${q.id}`);
+            
+            exp.classList.remove('hidden');
+
+            if (selected) {
+                answered++;
+                const val = parseInt(selected.value);
+                feedbackEl.classList.remove('hidden');
+                if (val === q.correct) {
+                    score++;
+                    feedbackEl.innerText = "BENAR";
+                    feedbackEl.className = "text-xs font-bold px-3 py-1 rounded-full bg-green-100 text-green-700";
+                    card.classList.add('ring-2', 'ring-green-400');
+                } else {
+                    feedbackEl.innerText = "SALAH";
+                    feedbackEl.className = "text-xs font-bold px-3 py-1 rounded-full bg-red-100 text-red-700";
+                    card.classList.add('ring-2', 'ring-red-400');
+                }
+            } else {
+                feedbackEl.classList.remove('hidden');
+                feedbackEl.innerText = "LEWAT";
+                feedbackEl.className = "text-xs font-bold px-3 py-1 rounded-full bg-slate-200 text-slate-500";
+            }
+        });
+
+        const finalScore = Math.round((score / qData.length) * 100);
+        document.getElementById('score-value').innerText = finalScore;
+        const msg = document.getElementById('score-message');
+        if(finalScore === 100) msg.innerText = "Luar Biasa! Kamu memiliki kemampuan visualisasi 3D yang sempurna.";
+        else if(finalScore >= 70) msg.innerText = "Hebat! Kamu sudah memahami konsep sudut pandang dengan baik.";
+        else msg.innerText = "Jangan menyerah! Perhatikan baik-baik arah panah merah pada gambar.";
+        document.getElementById('result-modal').classList.remove('hidden');
+    }
+
+    function closeModal() { document.getElementById('result-modal').classList.add('hidden'); }
+    
+    document.addEventListener('change', (e) => {
+        if(e.target.matches('input[type="radio"]')) {
+            const count = document.querySelectorAll('input[type="radio"]:checked').length;
+            document.getElementById('progress-text').innerText = count;
+        }
+    });
+</script>
+</body>
+</html>
