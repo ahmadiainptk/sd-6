@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kuis Bangun Ruang Lengkap</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap');
+        
+        body {
+            font-family: 'Nunito', sans-serif;
+            background-color: #f8f9fa;
+        }
+
+        /* Styling SVG */
+        svg {
+            display: block;
+            margin: 0 auto;
+            overflow: visible;
+            max-width: 100%;
+            height: auto;
+            /* Hapus drop-shadow default agar teks label tajam */
+        }
+
+        .cube-group { transition: transform 0.2s; }
+        .cube-group:hover { filter: brightness(1.15); }
+
+        .face-top { fill-opacity: 1; }
+        .face-left { filter: brightness(0.85); }
+        .face-right { filter: brightness(0.65); }
+
+        /* Teks Label Dimensi */
+        .dim-label {
+            font-size: 14px;
+            font-weight: bold;
+            fill: #1f2937;
+            font-family: monospace;
+        }
+        .dim-line {
+            stroke: #374151;
+            stroke-width: 1.5;
+            stroke-linecap: round;
+        }
+        .header-label {
+            font-size: 14px;
+            font-weight: bold;
+            fill: #000;
+            text-anchor: middle;
+        }
+
+        .option-label { transition: all 0.2s; }
+        .option-input:checked + .option-label {
+            background-color: #2563eb; 
+            color: white;
+            border-color: #2563eb;
+        }
+
+        .question-header {
+            background-color: #f3f4f6;
+            border-left: 4px solid #2563eb;
+            padding: 10px 15px;
+            font-weight: bold;
+            color: #1f2937;
+            margin-bottom: 1rem;
+        }
+
+        .explanation-box {
+            animation: slideDown 0.5s ease-out;
+        }
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="pb-24 text-gray-800">
+
+    <!-- Header -->
+    <header class="bg-gradient-to-r from-blue-700 to-blue-500 text-white p-8 shadow-xl mb-10">
+        <div class="max-w-4xl mx-auto text-center">
+            <h1 class="text-4xl font-extrabold mb-3 tracking-tight">Kuis Matematika: Bangun Ruang</h1>
+            <p class="text-blue-100 text-lg">Uji kemampuan spasial dan logika bangun ruang sisi datar Anda.</p>
+        </div>
+    </header>
+
+    <!-- Container Soal -->
+    <div id="quiz-container" class="max-w-3xl mx-auto space-y-10 px-4"></div>
+
+    <!-- Footer Controller -->
+    <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-50">
+        <div class="max-w-3xl mx-auto flex justify-between items-center">
+            <div class="text-sm text-gray-500">Soal <span id="progress-text">0</span> dari 15</div>
+            <button onclick="checkAnswers()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-full shadow-lg transform transition active:scale-95 flex items-center gap-2 text-sm md:text-base">
+                <span>Hitung Nilai & Lihat Pembahasan</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal Hasil -->
+    <div id="result-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-[60] p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl p-8 max-w-md w-full text-center shadow-2xl transform transition-all scale-100">
+            <div class="mb-4 text-6xl animate-bounce">🏆</div>
+            <h2 class="text-3xl font-bold text-gray-800 mb-2">Hasil Kuis</h2>
+            <div class="text-6xl font-black text-blue-600 mb-6" id="score-value">0</div>
+            <p id="score-message" class="text-gray-700 mb-8 font-medium bg-blue-50 p-4 rounded-lg"></p>
+            <button onclick="closeModal()" class="w-full bg-gray-800 hover:bg-gray-900 text-white py-3 rounded-xl font-bold transition">Lihat Pembahasan</button>
+        </div>
+    </div>
+
+<script>
+    const TILE = 30; // Ukuran tile lebih kecil sedikit agar muat double view
+    const CU = ['#e11d48', '#2563eb', '#16a34a', '#d97706', '#9333ea', '#0891b2', '#db2777', '#4b5563', '#854d0e', '#0f766e'];
+    const YELLOW = '#FFFF00';
+    const ORANGE = '#FF8C00';
+
+    // Helper untuk membuat array kubus solid (balok)
+    function createBlock(w, d, h, color, startX=0, startY=0, startZ=0) {
+        let arr = [];
+        for(let x=0; x<w; x++) {
+            for(let y=0; y<d; y++) {
+                for(let z=0; z<h; z++) {
+                    arr.push({x: startX+x, y: startY+y, z: startZ+z, c: color});
+                }
+            }
+        }
+        return arr;
+    }
+
+    const qData = [
+        {
+            id: 1,
+            text: "Perhatikan gambar berikut! Banyak kubus yang diperlukan untuk membentuk bangun di atas yaitu...",
+            options: ["6", "7", "8", "9"],
+            correct: 1, 
+            explanation: "Lantai dasar 5 kubus (bentuk L), lantai atas 2 kubus. Total 5 + 2 = 7.",
+            cubes: [
+                {x:0,y:0,z:0,c:CU[0]},{x:1,y:0,z:0,c:CU[1]},{x:2,y:0,z:0,c:CU[2]}, 
+                {x:0,y:1,z:0,c:CU[3]},{x:1,y:1,z:0,c:CU[4]}, 
+                {x:0,y:0,z:1,c:CU[5]},{x:1,y:0,z:1,c:CU[6]}
+            ]
+        },
+        {
+            id: 2,
+            text: "Asta akan membuat sebuah bangun seperti gambar. Banyak kubus yang diperlukan yaitu...",
+            options: ["6", "7", "8", "9"],
+            correct: 2,
+            explanation: "Lantai 1 = 5 kubus, Lantai 2 = 2 kubus, Lantai 3 = 1 kubus. Total 8.",
+            cubes: [
+                {x:0,y:0,z:0,c:CU[7]},{x:1,y:0,z:0,c:CU[8]},{x:2,y:0,z:0,c:CU[9]}, 
+                {x:0,y:1,z:0,c:CU[0]},{x:1,y:1,z:0,c:CU[1]}, 
+                {x:0,y:0,z:1,c:CU[2]},{x:1,y:0,z:1,c:CU[3]}, {x:0,y:0,z:2,c:CU[4]}
+            ]
+        },
+        {
+            id: 3,
+            text: "Aldi menggunakan beberapa kardus untuk membuat bangun di atas. Banyak kardus yang diperlukan yaitu...",
+            options: ["13", "14", "15", "16"],
+            correct: 1,
+            explanation: "Lapisan bawah 9, tengah 4, atas 1. Total 14.",
+            cubes: [...createBlock(3,3,1,CU[5]), ...createBlock(2,2,1,CU[0],0,0,1), {x:0,y:0,z:2,c:CU[2]}]
+        },
+        {
+            id: 4, type: 'text', text: "Dedi memiliki tiga kubus. Dia akan membuat bangunan tiga lantai. Banyak kemungkinan bentuknya...", options: ["1", "2", "3", "4"], correct: 0, explanation: "Hanya 1 cara menyusun 3 kubus vertikal lurus.", cubes: null
+        },
+        {
+            id: 5, text: "Banyak kubus pada gambar tersebut adalah...", options: ["4", "5", "6", "8"], correct: 0, explanation: "3 kubus di bawah + 1 di atas = 4 kubus.",
+            cubes: [{x:0,y:0,z:0,c:CU[3]}, {x:1,y:0,z:0,c:CU[4]}, {x:0,y:1,z:0,c:CU[5]}, {x:0,y:0,z:1,c:CU[6]}]
+        },
+        {
+            id: 6, text: "Pernyataan yang benar tentang bangunan di atas yaitu...", options: ["terbuat dari 2 kubus", "terbuat dari 3 kubus", "terbuat dari 2 balok", "terbuat dari 3 balok"], correct: 0, explanation: "Terdiri dari 2 kubus yang ditumpuk.",
+            cubes: [{x:0,y:0,z:0,c:CU[8]}, {x:0,y:0,z:1,c:CU[9]}]
+        },
+        {
+            id: 7, type: 'text', text: "Linda memiliki dua balok. Dia akan membuat bangunan satu lantai. Banyak kemungkinannya...", options: ["2", "3", "4", "5"], correct: 1, explanation: "Disusun memanjang, melebar, atau siku L (3 cara).", cubes: null
+        },
+        {
+            id: 8, text: "Banyak kardus yang ada pada tumpukan tersebut...", options: ["2", "4", "6", "8"], correct: 2, explanation: "3 di bawah + 2 di tengah + 1 di atas = 6.",
+            cubes: [{x:0,y:0,z:0,c:CU[1]},{x:1,y:0,z:0,c:CU[2]},{x:2,y:0,z:0,c:CU[3]},{x:0,y:0,z:1,c:CU[4]},{x:1,y:0,z:1,c:CU[5]},{x:0,y:0,z:2,c:CU[6]}]
+        },
+        // --- SOAL KHUSUS DENGAN PERBANDINGAN UNIT (SOAL 9 & 10) ---
+        {
+            id: 9,
+            text: "Cindy akan menumpuk beberapa kardus identik berbentuk kubus seperti gambar di atas. Banyak kardus yang ada pada tumpukan tersebut yaitu...",
+            options: ["4", "6", "8", "12"],
+            correct: 1, // B (6)
+            explanation: "<strong>Pembahasan:</strong><br>Gambar ini adalah tangga lebar.<br>• Baris Belakang: 2 tumpukan setinggi 2 balok = 4 balok.<br>• Baris Depan: 2 tumpukan setinggi 1 balok = 2 balok.<br><strong>Total = 4 + 2 = 6 balok.</strong>",
+            isComparison: true, // Flag khusus
+            unitColor: YELLOW,
+            stackColor: YELLOW,
+            // Bentuk Tangga Lebar (2 wide x 2 deep)
+            // Back row (y=1) height 2. Front row (y=0) height 1.
+            cubes: [
+                // Front row (y=0, z=0) -> 2 blocks
+                {x:0,y:0,z:0,c:YELLOW}, {x:1,y:0,z:0,c:YELLOW},
+                // Back row (y=1, z=0) -> 2 blocks
+                {x:0,y:1,z:0,c:YELLOW}, {x:1,y:1,z:0,c:YELLOW},
+                // Back row (y=1, z=1) -> 2 blocks (High)
+                {x:0,y:1,z:1,c:YELLOW}, {x:1,y:1,z:1,c:YELLOW}
+            ],
+            labels: [
+                {text: "2", x: 1, y: 0, z: -0.2, type: 'width'}, // Front width label
+                {text: "1", x: 2.2, y: 0.5, z: 0, type: 'depth'}, // Side depth label
+                {text: "1", x: 2.2, y: 1.5, z: 1, type: 'height'} // Top step label? Or generic
+            ]
+        },
+        {
+            id: 10,
+            text: "Tumpukan kardus di atas tersusun dari beberapa kardus identik. Banyak kardus yang ada pada tumpukan tersebut yaitu...",
+            options: ["10", "12", "14", "15"],
+            correct: 1, // B (12)
+            explanation: "<strong>Pembahasan:</strong><br>Gambar ini adalah balok padat berukuran 3x2x2.<br>• Panjang = 3<br>• Lebar = 2<br>• Tinggi = 2<br><strong>Total = 3 x 2 x 2 = 12 kardus.</strong>",
+            isComparison: true,
+            unitColor: ORANGE,
+            stackColor: ORANGE,
+            // Solid block 3x2x2
+            cubes: createBlock(3, 2, 2, ORANGE),
+            labels: [
+                {text: "3", x: 1.5, y: 0, z: -0.2, type: 'width'},
+                {text: "1", x: 3.2, y: 0.5, z: 0, type: 'depth'}, 
+                {text: "1", x: 3.2, y: 1.5, z: 1, type: 'height'} 
+            ]
+        },
+        {
+            id: 11, type: 'text', text: "Windu akan meletakkan 12 kardus (20x40x50 cm) ke gudang... Cara meminimalkan luas lantai?", options: ["Rusuk terpanjang (50cm) tegak", "Rusuk terpendek (20cm) tegak", "Mendatar", "Satu tumpukan"], correct: 0, explanation: "Rusuk terpanjang harus tegak agar alasnya paling kecil.", cubes: null
+        },
+        {
+            id: 12, type: 'text', text: "Luas lantai yang digunakan Windu adalah...", options: ["0,8 m²", "0,12 m²", "0,16 m²", "0,18 m²"], correct: 2, explanation: "2 tumpukan x (20x40) = 1600 cm² = 0,16 m².", cubes: null
+        },
+        {
+            id: 13, type: 'text', text: "Banyak kardus maksimal dalam satu tumpukan Rini (3,5m gudang, 30cm kardus)...", options: ["11", "12", "13", "14"], correct: 0, explanation: "350 cm / 30 cm = 11,6. Dibulatkan ke bawah jadi 11.", cubes: null
+        },
+        {
+            id: 14, text: "Banyak balok pada tumpukan ini...", options: ["14", "15", "16", "17"], correct: 2, explanation: "4 x 4 = 16 balok.", cubes: createBlock(4,4,1,CU[7])
+        },
+        {
+            id: 15, text: "Banyak balok pada bangun di atas...", options: ["14", "16", "18", "20"], correct: 3, explanation: "5 x 4 = 20 balok.", cubes: createBlock(5,4,1,CU[8])
+        }
+    ];
+
+    function drawIsometricUnit(color, offsetX, offsetY, labels=[]) {
+        // Gambar 1 kubus referensi
+        const size = TILE;
+        let p = '';
+        // Top
+        p += `<path d="M${offsetX},${offsetY} l${size},-${size*0.5} l${size},${size*0.5} l-${size},${size*0.5} z" fill="${color}" stroke="#333" stroke-width="1"/>`;
+        // Left
+        p += `<path d="M${offsetX},${offsetY} l${size},${size*0.5} v${size} l-${size},-${size*0.5} z" fill="${color}" style="filter:brightness(0.85)" stroke="#333" stroke-width="1"/>`;
+        // Right
+        p += `<path d="M${offsetX+size},${offsetY+size*0.5} l${size},-${size*0.5} v${size} l-${size},${size*0.5} z" fill="${color}" style="filter:brightness(0.65)" stroke="#333" stroke-width="1"/>`;
+        
+        // Labels 1, 1, 1
+        let txt = '';
+        txt += `<text x="${offsetX-10}" y="${offsetY+size}" class="dim-label">1</text>`; // Left height
+        txt += `<text x="${offsetX+size}" y="${offsetY+size*1.8}" class="dim-label">1</text>`; // Bottom width
+        txt += `<text x="${offsetX+size*2+5}" y="${offsetY+size}" class="dim-label">1</text>`; // Right depth
+        
+        let header = `<text x="${offsetX+size}" y="${offsetY-30}" class="header-label">Kardus Identik</text>`;
+        return header + p + txt;
+    }
+
+    function generateSVG(q) {
+        if (!q.cubes) return ''; 
+
+        // Sorting Painter's Algo
+        const sorted = [...q.cubes].sort((a, b) => (a.x + a.y + a.z) - (b.x + b.y + b.z));
+        
+        let content = '';
+        let startIsoX = 0; // Shift for main stack
+
+        // Jika mode comparison, geser stack ke kanan, gambar unit di kiri
+        if (q.isComparison) {
+            startIsoX = 180; // Jarak aman
+            content += drawIsometricUnit(q.unitColor, 50, 100);
+            content += `<text x="${startIsoX+60}" y="70" class="header-label">Tumpukan Kardus</text>`;
+        }
+
+        // --- DRAW MAIN STACK ---
+        let paths = '';
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+
+        sorted.forEach(c => {
+            const isoX = startIsoX + (c.x - c.y) * TILE;
+            const isoY = 150 + (c.x + c.y) * (TILE * 0.5) - (c.z * TILE); // Base Y agak turun
+
+            // Update bounds
+            if(isoX < minX) minX = isoX; if(isoX > maxX) maxX = isoX;
+            if(isoY < minY) minY = isoY; if(isoY > maxY) maxY = isoY;
+
+            const baseC = c.c;
+            paths += `<path d="M${isoX},${isoY} l${TILE},-${TILE*0.5} l${TILE},${TILE*0.5} l-${TILE},${TILE*0.5} z" fill="${baseC}" class="face-top" stroke="rgba(0,0,0,0.3)" stroke-width="1"/>`;
+            paths += `<path d="M${isoX},${isoY} l${TILE},${TILE*0.5} v${TILE} l-${TILE},-${TILE*0.5} z" fill="${baseC}" class="face-left" stroke="rgba(0,0,0,0.3)" stroke-width="1"/>`;
+            paths += `<path d="M${isoX+TILE},${isoY+TILE*0.5} l${TILE},-${TILE*0.5} v${TILE} l-${TILE},${TILE*0.5} z" fill="${baseC}" class="face-right" stroke="rgba(0,0,0,0.3)" stroke-width="1"/>`;
+        });
+
+        content += paths;
+
+        // --- DRAW LABELS FOR STACK ---
+        if (q.labels) {
+            q.labels.forEach(lbl => {
+                // Konversi koord grid ke iso pixel (approximate center point)
+                const lx = startIsoX + (lbl.x - lbl.y) * TILE;
+                const ly = 150 + (lbl.x + lbl.y) * (TILE * 0.5) - (lbl.z * TILE);
+                
+                // Offset sedikit biar gak nimpa
+                let tx = lx, ty = ly;
+                if(lbl.type === 'width') { ty += TILE*1.5; tx += 0; }
+                if(lbl.type === 'depth') { tx += TILE; ty += TILE; }
+                if(lbl.type === 'height') { tx += TILE; ty += 0; }
+
+                content += `<text x="${tx}" y="${ty}" class="dim-label">${lbl.text}</text>`;
+            });
+        }
+
+        const width = 450;
+        const height = 300;
+        return `<svg viewBox="0 0 ${width} ${height}" width="100%" height="auto" style="max-height:300px">${content}</svg>`;
+    }
+
+    const container = document.getElementById('quiz-container');
+    const progressText = document.getElementById('progress-text');
+
+    qData.forEach((q) => {
+        const svgHTML = generateSVG(q);
+        let optionsHTML = '';
+
+        q.options.forEach((opt, optIdx) => {
+            const letter = String.fromCharCode(65 + optIdx);
+            optionsHTML += `
+                <div class="relative">
+                    <input type="radio" name="q${q.id}" id="q${q.id}_${optIdx}" value="${optIdx}" class="option-input hidden peer">
+                    <label for="q${q.id}_${optIdx}" class="option-label flex items-center p-3 rounded-lg border-2 border-gray-200 cursor-pointer hover:bg-blue-50 hover:border-blue-300">
+                        <span class="w-8 h-8 flex items-center justify-center bg-gray-100 text-gray-600 rounded-full font-bold mr-3 peer-checked:bg-white peer-checked:text-blue-600">${letter}</span>
+                        <span class="font-medium text-lg">${opt}</span>
+                    </label>
+                </div>
+            `;
+        });
+
+        const html = `
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden relative" id="card-${q.id}">
+                <div class="question-header flex justify-between items-center">
+                    <span>Soal No. ${q.id}</span>
+                    <span id="feedback-${q.id}" class="text-xs font-bold px-2 py-1 rounded hidden"></span>
+                </div>
+                <div class="p-4 md:p-6">
+                    <p class="text-base md:text-lg text-gray-800 mb-6 font-medium leading-relaxed">${q.text}</p>
+                    ${q.cubes ? `<div class="mb-6 flex justify-center bg-white rounded-xl overflow-hidden">${svgHTML}</div>` : ''}
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+                        ${optionsHTML}
+                    </div>
+                    <div id="explanation-${q.id}" class="explanation-box hidden mt-4 p-4 bg-blue-50 border border-blue-100 rounded-lg text-gray-700 text-sm leading-relaxed">
+                        <div class="flex gap-2">
+                            <span class="text-blue-500 font-bold">💡</span>
+                            <div>${q.explanation || 'Tidak ada pembahasan.'}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        container.innerHTML += html;
+    });
+
+    function checkAnswers() {
+        let score = 0;
+        qData.forEach(q => {
+            const selected = document.querySelector(`input[name="q${q.id}"]:checked`);
+            const feedbackEl = document.getElementById(`feedback-${q.id}`);
+            const card = document.getElementById(`card-${q.id}`);
+            const explanationEl = document.getElementById(`explanation-${q.id}`);
+            
+            explanationEl.classList.remove('hidden');
+
+            if (selected) {
+                const val = parseInt(selected.value);
+                feedbackEl.classList.remove('hidden');
+                if (val === q.correct) {
+                    score++;
+                    feedbackEl.innerText = "Benar";
+                    feedbackEl.className = "text-xs font-bold px-2 py-1 rounded bg-green-100 text-green-700";
+                    card.classList.add('ring-2', 'ring-green-500');
+                } else {
+                    feedbackEl.innerText = "Salah";
+                    feedbackEl.className = "text-xs font-bold px-2 py-1 rounded bg-red-100 text-red-700";
+                    card.classList.add('ring-2', 'ring-red-500');
+                }
+            } else {
+                feedbackEl.classList.remove('hidden');
+                feedbackEl.innerText = "Lewat";
+                feedbackEl.className = "text-xs font-bold px-2 py-1 rounded bg-yellow-100 text-yellow-700";
+            }
+        });
+
+        const finalScore = Math.round((score / qData.length) * 100);
+        document.getElementById('score-value').innerText = finalScore;
+        const msgEl = document.getElementById('score-message');
+        if(finalScore === 100) msgEl.innerText = "Sempurna! Kamu master bangun ruang.";
+        else if(finalScore >= 70) msgEl.innerText = "Hebat! Pertahankan.";
+        else msgEl.innerText = "Jangan menyerah, baca pembahasannya ya.";
+        document.getElementById('result-modal').classList.remove('hidden');
+    }
+
+    function closeModal() { document.getElementById('result-modal').classList.add('hidden'); }
+    
+    document.addEventListener('change', (e) => {
+        if(e.target.matches('input[type="radio"]')) {
+            const count = document.querySelectorAll('input[type="radio"]:checked').length;
+            progressText.innerText = count;
+        }
+    });
+</script>
+</body>
+</html>
